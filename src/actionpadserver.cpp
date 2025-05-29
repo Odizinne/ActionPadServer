@@ -5,6 +5,8 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <windows.h>
+#include <QFile>
+#include <QFileInfo>
 
 ActionModel::ActionModel(QObject *parent) : QAbstractListModel(parent)
 {
@@ -454,7 +456,6 @@ void ActionPadServer::sendActionsToClient(QTcpSocket *client)
 {
     QJsonObject message;
     message["type"] = "actions";
-
     QJsonArray actionsArray;
     const auto& actions = m_actionModel.getActions();
 
@@ -462,15 +463,51 @@ void ActionPadServer::sendActionsToClient(QTcpSocket *client)
         QJsonObject actionObj;
         actionObj["id"] = action.id;
         actionObj["name"] = action.name;
+        QString iconData = "placeholder";
 
-        QString iconPath = action.icon.isEmpty() ? "placeholder" : action.icon;
-        actionObj["icon"] = iconPath;
+        if (!action.icon.isEmpty() && action.icon != "placeholder") {
+            if (action.icon.startsWith("qrc:/")) {
+                iconData = action.icon;
+            } else {
+                QUrl iconUrl(action.icon);
+                QString filePath = iconUrl.toLocalFile();
 
+                if (filePath.isEmpty()) {
+                    filePath = action.icon;
+                }
+
+                // Check file size first, before reading
+                QFileInfo fileInfo(filePath);
+                if (fileInfo.exists() && fileInfo.size() <= 200000) { // 200KB limit
+                    QFile iconFile(filePath);
+                    if (iconFile.open(QIODevice::ReadOnly)) {
+                        QByteArray imageData = iconFile.readAll();
+                        QString base64 = imageData.toBase64();
+
+                        QString mimeType = "image/png";
+                        if (filePath.endsWith(".jpg", Qt::CaseInsensitive) ||
+                            filePath.endsWith(".jpeg", Qt::CaseInsensitive)) {
+                            mimeType = "image/jpeg";
+                        } else if (filePath.endsWith(".svg", Qt::CaseInsensitive)) {
+                            mimeType = "image/svg+xml";
+                        } else if (filePath.endsWith(".gif", Qt::CaseInsensitive)) {
+                            mimeType = "image/gif";
+                        } else if (filePath.endsWith(".ico", Qt::CaseInsensitive)) {
+                            mimeType = "image/x-icon";
+                        }
+
+                        iconData = QString("data:%1;base64,%2").arg(mimeType, base64);
+                    }
+                }
+                // If file doesn't exist, is too large, or fails to open -> iconData stays "placeholder"
+            }
+        }
+
+        actionObj["icon"] = iconData;
         actionsArray.append(actionObj);
     }
 
     message["actions"] = actionsArray;
-
     QJsonDocument doc(message);
     client->write(doc.toJson(QJsonDocument::Compact) + "\n");
 }
