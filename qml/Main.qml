@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls.Material
-import QtQuick.Layouts
 import Odizinne.ActionPadServer 1.0
 
 ApplicationWindow {
@@ -9,25 +8,83 @@ ApplicationWindow {
     height: 600
     visible: true
     title: qsTr("Action Pad Server")
+    Material.theme: Material.Dark
+    color: Material.theme === Material.Dark ? "#1C1C1C" : "#E3E3E3"
+
+    header: ToolBar {
+        Material.elevation: 6
+        Material.background: Material.theme === Material.Dark ? "#2B2B2B" : "#FFFFFF"
+
+        ToolButton {
+            icon.source: "qrc:/icons/plus.png"
+            icon.width: 18
+            icon.height: 18
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            onClicked: {
+                actionDialog.isModifying = false
+                actionDialog.clearFields()
+                actionDialog.open()
+            }
+        }
+
+        Label {
+            id: serverStatusLabel
+            text: server.isRunning ? "Server Running" : "Server Stopped"
+            font.pixelSize: 18
+            font.bold: true
+            anchors.centerIn: parent
+        }
+
+        Row {
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 10
+
+            Label {
+                text: "Port:"
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            SpinBox {
+                id: portSpinBox
+                from: 1024
+                to: 65535
+                value: 8080
+                enabled: !server.isRunning
+                width: 120
+                height: implicitHeight - 6
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            ToolButton {
+                icon.source: server.isRunning ? "qrc:/icons/stop.png" : "qrc:/icons/play.png"
+                icon.width: 18
+                icon.height: 18
+                onClicked: {
+                    if (server.isRunning) {
+                        server.stopServer()
+                    } else {
+                        server.startServer(portSpinBox.value)
+                    }
+                }
+            }
+        }
+    }
 
     ActionPadServer {
         id: server
 
         onClientConnected: function(address) {
-            statusText.text += "\nClient connected: " + address
-            statusText.text += "\nSent " + server.actionModel.rowCount() + " actions to client"
+            console.log("Client connected:", address)
         }
 
         onClientDisconnected: function(address) {
-            statusText.text += "\nClient disconnected: " + address
+            console.log("Client disconnected:", address)
         }
 
         onActionExecuted: function(actionId, success, output) {
-            statusText.text += "\nAction " + actionId + " executed: " +
-                    (success ? "success" : "failed")
-            if (output.length > 0) {
-                statusText.text += "\nOutput: " + output
-            }
+            console.log("Action", actionId, "executed:", success ? "success" : "failed")
         }
     }
 
@@ -35,185 +92,109 @@ ApplicationWindow {
         id: actionDialog
         anchors.centerIn: parent
 
+        property int modifyingIndex: -1
+
+        onDeleteRequested: {
+            server.actionModel.removeAction(modifyingIndex)
+            close()
+        }
+
         onAccepted: {
-            server.actionModel.addAction(
-                        actionName,
-                        command,
-                        commandArgs,
-                        icon
-                        )
-
-            statusText.text += "\nAction '" + actionName + "' added and pushed to " +
-                    server.clientCount + " client(s)"
-
+            if (isModifying) {
+                server.actionModel.updateAction(
+                    modifyingIndex,
+                    actionName,
+                    command,
+                    commandArgs,
+                    icon
+                )
+            } else {
+                server.actionModel.addAction(
+                    actionName,
+                    command,
+                    commandArgs,
+                    icon
+                )
+            }
             clearFields()
         }
     }
 
-
-    ColumnLayout {
+    GridView {
+        id: actionsGrid
         anchors.fill: parent
-        anchors.margins: 10
+        anchors.margins: 20
 
-        // Server Controls
-        GroupBox {
-            title: "Server Control"
-            Layout.fillWidth: true
+        model: server.actionModel
+        cellWidth: 120
+        cellHeight: 140
 
-            RowLayout {
+        delegate: Item {
+            width: actionsGrid.cellWidth
+            height: actionsGrid.cellHeight
+
+            Rectangle {
                 anchors.fill: parent
+                anchors.margins: 10
+                color: "transparent"
+                border.color: mouseArea.containsMouse ? "#4CAF50" : "#E0E0E0"
+                border.width: 2
+                radius: 8
 
-                Button {
-                    text: server.isRunning ? "Stop Server" : "Start Server"
-                    onClicked: {
-                        if (server.isRunning) {
-                            server.stopServer()
-                        } else {
-                            server.startServer(8080)
-                        }
-                    }
-                }
+                Column {
+                    anchors.centerIn: parent
+                    spacing: 10
 
-                Label {
-                    text: server.isRunning ?
-                              "Server running on " + server.serverAddress + ":" + server.serverPort :
-                              "Server stopped"
-                }
+                    Image {
+                        width: 64
+                        height: 64
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        source: model.icon.length > 0 ? model.icon : "qrc:/icons/placeholder.png"
+                        fillMode: Image.PreserveAspectFit
 
-                Item { Layout.fillWidth: true }
-
-                Label {
-                    text: "Connected clients: " + server.clientCount
-                    color: server.clientCount > 0 ? "green" : "#666"
-                }
-            }
-        }
-
-        // Actions Setup
-        GroupBox {
-            title: "Actions"
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-
-            ColumnLayout {
-                anchors.fill: parent
-
-                // New Action Button
-                RowLayout {
-                    Layout.fillWidth: true
-
-                    Button {
-                        text: "New Action"
-                        highlighted: true
-                        onClicked: actionDialog.open()
-                    }
-
-                    Item { Layout.fillWidth: true }
-
-                    Label {
-                        text: server.actionModel.rowCount() + " action(s) configured"
-                        color: "#666"
-                    }
-                }
-
-                // Actions List
-                ListView {
-                    id: actionsList
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    model: server.actionModel
-
-                    delegate: Rectangle {
-                        width: actionsList.width
-                        height: 80
-                        border.color: "#ccc"
-                        border.width: 1
-                        radius: 4
-
-                        RowLayout {
+                        Rectangle {
                             anchors.fill: parent
-                            anchors.margins: 10
+                            color: "#F5F5F5"
+                            border.color: "#E0E0E0"
+                            border.width: 1
+                            radius: 4
+                            visible: parent.status === Image.Error
 
-                            // Icon preview
-                            Image {
-                                Layout.preferredWidth: 32
-                                Layout.preferredHeight: 32
-                                source: model.icon.length > 0 ? model.icon : "qrc:/icons/placeholder.png"
-                                fillMode: Image.PreserveAspectFit
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    color: "transparent"
-                                    border.color: "#ddd"
-                                    border.width: 1
-                                    radius: 2
-                                    visible: parent.status === Image.Error
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "?"
-                                        color: "#999"
-                                    }
-                                }
-                            }
-
-                            Column {
-                                Layout.fillWidth: true
-                                spacing: 2
-
-                                Text {
-                                    text: model.name
-                                    font.bold: true
-                                    font.pixelSize: 14
-                                }
-                                Text {
-                                    text: "Command: " + model.command +
-                                          (model.arguments.length > 0 ? " " + model.arguments : "")
-                                    color: "#666"
-                                    font.pixelSize: 12
-                                    wrapMode: Text.WordWrap
-                                }
-                                Text {
-                                    text: "Icon: " + (model.icon.length > 0 ? model.icon : "default placeholder")
-                                    color: "#999"
-                                    font.pixelSize: 11
-                                }
-                            }
-
-                            Button {
-                                text: "Test"
-                                onClicked: server.executeAction(model.actionId)
-                            }
-
-                            Button {
-                                text: "Remove"
-                                onClicked: {
-                                    var actionName = model.name
-                                    server.actionModel.removeAction(index)
-                                    statusText.text += "\nAction '" + actionName + "' removed and update pushed to " +
-                                            server.clientCount + " client(s)"
-                                }
+                            Text {
+                                anchors.centerIn: parent
+                                text: "?"
+                                color: "#999"
+                                font.pixelSize: 24
                             }
                         }
                     }
+
+                    Text {
+                        text: model.name
+                        font.pixelSize: 12
+                        font.bold: true
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        width: parent.parent.width - 20
+                        elide: Text.ElideRight
+                        maximumLineCount: 2
+                    }
                 }
-            }
-        }
 
-        // Status/Debug Area
-        GroupBox {
-            title: "Status & Debug"
-            Layout.fillWidth: true
-            Layout.preferredHeight: 150
-
-            ScrollView {
-                anchors.fill: parent
-
-                TextArea {
-                    id: statusText
-                    text: "Action Pad Server ready..."
-                    readOnly: true
-                    wrapMode: TextArea.Wrap
+                MouseArea {
+                    id: mouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: {
+                        actionDialog.isModifying = true
+                        actionDialog.modifyingIndex = index
+                        actionDialog.actionName = model.name
+                        actionDialog.command = model.command
+                        actionDialog.commandArgs = model.arguments
+                        actionDialog.icon = model.icon
+                        actionDialog.open()
+                    }
                 }
             }
         }

@@ -1,5 +1,9 @@
 <RCC>
     <qresource prefix="/icons">
         <file>placeholder.png</file>
+        <file>play.png</file>
+        <file>stop.png</file>
+        <file>plus.png</file>
+        <file>browse.png</file>
     </qresource>
 </RCC>

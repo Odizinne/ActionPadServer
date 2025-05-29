@@ -5,7 +5,7 @@ import QtQuick.Dialogs
 
 Dialog {
     id: dialog
-    title: "Create New Action"
+    title: isModifying ? "Modify Action" : "Create New Action"
     modal: true
     standardButtons: Dialog.Ok | Dialog.Cancel
 
@@ -13,15 +13,35 @@ Dialog {
     property alias command: commandField.text
     property alias commandArgs: argumentsField.text
     property alias icon: iconField.text
+    property bool isModifying: false
 
     // Custom button text
     Component.onCompleted: {
         let okButton = standardButton(Dialog.Ok)
+        let cancelButton = standardButton(Dialog.Cancel)
+
         if (okButton) {
-            okButton.text = "Create"
+            okButton.text = Qt.binding(function() {
+                return isModifying ? "Save" : "Create"
+            })
             okButton.enabled = Qt.binding(function() {
                 return nameField.text.length > 0 && commandField.text.length > 0
             })
+        }
+
+        if (cancelButton) {
+            cancelButton.text = Qt.binding(function() {
+                return isModifying ? "Delete" : "Cancel"
+            })
+        }
+    }
+
+    // Handle the cancel button differently when modifying
+    onRejected: {
+        if (isModifying) {
+            deleteConfirmDialog.open()
+        } else {
+            close()
         }
     }
 
@@ -48,8 +68,10 @@ Dialog {
             Layout.fillWidth: true
             placeholderText: "Command to execute"
         }
-        Button {
-            text: "Browse..."
+        ToolButton {
+            icon.source: "qrc:/icons/browse.png"
+            icon.width: 18
+            icon.height: 18
             onClicked: commandFileDialog.open()
         }
 
@@ -67,8 +89,10 @@ Dialog {
             Layout.fillWidth: true
             placeholderText: "Icon path (optional)"
         }
-        Button {
-            text: "Browse..."
+        ToolButton {
+            icon.source: "qrc:/icons/browse.png"
+            icon.width: 18
+            icon.height: 18
             onClicked: iconFileDialog.open()
         }
     }
@@ -91,10 +115,30 @@ Dialog {
         }
     }
 
+    Dialog {
+        id: deleteConfirmDialog
+        title: "Delete Action"
+        anchors.centerIn: parent
+        modal: true
+        standardButtons: Dialog.Yes | Dialog.No
+
+        Label {
+            text: "Are you sure you want to delete this action?"
+        }
+
+        onAccepted: {
+            dialog.deleteRequested()
+            dialog.close()
+        }
+    }
+
+    signal deleteRequested()
+
     function clearFields() {
         nameField.text = ""
         commandField.text = ""
         argumentsField.text = ""
         iconField.text = ""
+        isModifying = false
     }
 }
