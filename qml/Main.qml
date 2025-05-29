@@ -32,7 +32,7 @@ ApplicationWindow {
 
         Label {
             id: serverStatusLabel
-            text: server.isRunning ? "Server Running" : "Server Stopped"
+            text: ActionPadServer.isRunning ? "Server Running" : "Server Stopped"
             font.pixelSize: 18
             font.bold: true
             anchors.centerIn: parent
@@ -53,40 +53,24 @@ ApplicationWindow {
                 from: 1024
                 to: 65535
                 value: 8080
-                enabled: !server.isRunning
+                enabled: !ActionPadServer.isRunning
                 width: 120
                 height: implicitHeight - 6
                 anchors.verticalCenter: parent.verticalCenter
             }
 
             ToolButton {
-                icon.source: server.isRunning ? "qrc:/icons/stop.png" : "qrc:/icons/play.png"
+                icon.source: ActionPadServer.isRunning ? "qrc:/icons/stop.png" : "qrc:/icons/play.png"
                 icon.width: 18
                 icon.height: 18
                 onClicked: {
-                    if (server.isRunning) {
-                        server.stopServer()
+                    if (ActionPadServer.isRunning) {
+                        ActionPadServer.stopServer()
                     } else {
-                        server.startServer(portSpinBox.value)
+                        ActionPadServer.startServer(portSpinBox.value)
                     }
                 }
             }
-        }
-    }
-
-    ActionPadServer {
-        id: server
-
-        onClientConnected: function(address) {
-            console.log("Client connected:", address)
-        }
-
-        onClientDisconnected: function(address) {
-            console.log("Client disconnected:", address)
-        }
-
-        onActionExecuted: function(actionId, success, output) {
-            console.log("Action", actionId, "executed:", success ? "success" : "failed")
         }
     }
 
@@ -97,13 +81,13 @@ ApplicationWindow {
         property int modifyingIndex: -1
 
         onDeleteRequested: {
-            server.actionModel.removeAction(modifyingIndex)
+            ActionPadServer.actionModel.removeAction(modifyingIndex)
             close()
         }
 
         onAccepted: {
             if (isModifying) {
-                server.actionModel.updateAction(
+                ActionPadServer.actionModel.updateAction(
                     modifyingIndex,
                     actionName,
                     command,
@@ -111,7 +95,7 @@ ApplicationWindow {
                     icon
                 )
             } else {
-                server.actionModel.addAction(
+                ActionPadServer.actionModel.addAction(
                     actionName,
                     command,
                     commandArgs,
@@ -127,7 +111,7 @@ ApplicationWindow {
         anchors.fill: parent
         anchors.margins: 20
 
-        model: server.actionModel
+        model: ActionPadServer.actionModel
         cellWidth: 120
         cellHeight: 120
 

@@ -10,6 +10,27 @@ ActionModel::ActionModel(QObject *parent) : QAbstractListModel(parent)
 {
 }
 
+ActionPadServer* ActionPadServer::m_instance = nullptr;
+
+ActionPadServer* ActionPadServer::create(QQmlEngine *qmlEngine, QJSEngine *jsEngine)
+{
+    Q_UNUSED(qmlEngine)
+    Q_UNUSED(jsEngine)
+
+    if (!m_instance) {
+        m_instance = new ActionPadServer();
+    }
+    return m_instance;
+}
+
+ActionPadServer* ActionPadServer::instance()
+{
+    if (!m_instance) {
+        m_instance = new ActionPadServer();
+    }
+    return m_instance;
+}
+
 void ActionModel::addAction(const QString &name, const QString &command,
                             const QString &arguments, const QString &icon)
 {

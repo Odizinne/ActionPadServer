@@ -10,6 +10,7 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QSettings>
+#include <QQmlEngine>
 
 struct Action {
     QString name;
@@ -22,6 +23,7 @@ struct Action {
 class ActionModel : public QAbstractListModel
 {
     Q_OBJECT
+    QML_ELEMENT
 
 public:
     enum ActionRoles {
@@ -61,6 +63,8 @@ private:
 class ActionPadServer : public QObject
 {
     Q_OBJECT
+    QML_ELEMENT
+    QML_SINGLETON
     Q_PROPERTY(bool isRunning READ isRunning NOTIFY isRunningChanged)
     Q_PROPERTY(QString serverAddress READ serverAddress NOTIFY serverAddressChanged)
     Q_PROPERTY(int serverPort READ serverPort NOTIFY serverPortChanged)
@@ -68,7 +72,8 @@ class ActionPadServer : public QObject
     Q_PROPERTY(ActionModel* actionModel READ actionModel CONSTANT)
 
 public:
-    explicit ActionPadServer(QObject *parent = nullptr);
+    static ActionPadServer* create(QQmlEngine *qmlEngine, QJSEngine *jsEngine);
+    static ActionPadServer* instance();
 
     bool isRunning() const { return m_server->isListening(); }
     QString serverAddress() const { return m_serverAddress; }
@@ -96,9 +101,11 @@ private slots:
     void broadcastActionsUpdate();
 
 private:
+    explicit ActionPadServer(QObject *parent = nullptr);
     void sendActionsToClient(QTcpSocket *client);
     void processClientMessage(QTcpSocket *client, const QJsonObject &message);
 
+    static ActionPadServer* m_instance;
     QTcpServer *m_server;
     QList<QTcpSocket*> m_clients;
     ActionModel m_actionModel;
