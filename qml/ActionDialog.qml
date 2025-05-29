@@ -154,8 +154,6 @@ Dialog {
                     Layout.fillWidth: true
                     model: [
                         "Play/Pause",
-                        "Play",
-                        "Pause",
                         "Stop",
                         "Next Track",
                         "Previous Track",
@@ -203,7 +201,6 @@ Dialog {
                         Layout.preferredWidth: 80
                         model: ["", "Ctrl", "Alt", "Shift", "Meta"]
                         currentIndex: 0
-
                         onCurrentTextChanged: shortcutLayout.updateShortcutText()
                     }
 

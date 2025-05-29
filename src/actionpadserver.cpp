@@ -4,11 +4,8 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QJsonArray>
-#ifdef Q_OS_WIN
 #include <windows.h>
-#endif
 
-// ActionModel Implementation
 ActionModel::ActionModel(QObject *parent) : QAbstractListModel(parent)
 {
 }
@@ -53,7 +50,6 @@ void ActionModel::addAction(const QString &name, const QString &command,
     m_actions.append(action);
     endInsertRows();
 
-    // Auto-save after adding
     saveToSettings();
     emit actionsChanged();
 }
@@ -253,7 +249,7 @@ void ActionPadServer::executeAction(int actionId)
             QProcess *process = new QProcess(this);
 
             connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-                    [=](int exitCode, QProcess::ExitStatus exitStatus) {
+                    [=, this](int exitCode, QProcess::ExitStatus exitStatus) {
                         QString output = process->readAllStandardOutput();
                         bool success = (exitStatus == QProcess::NormalExit && exitCode == 0);
                         emit actionExecuted(actionId, success, output);
@@ -283,76 +279,127 @@ void ActionPadServer::executeAction(int actionId)
 // Add these new methods to ActionPadServer class
 void ActionPadServer::executeMediaKey(int mediaKeyIndex)
 {
-#ifdef Q_OS_WIN
-    // Windows implementation using keybd_event
     BYTE vkCode = 0;
     switch (mediaKeyIndex) {
     case 0: vkCode = VK_MEDIA_PLAY_PAUSE; break; // Play/Pause
-    case 1: vkCode = VK_MEDIA_PLAY_PAUSE; break; // Play (same as play/pause)
-    case 2: vkCode = VK_MEDIA_PLAY_PAUSE; break; // Pause (same as play/pause)
-    case 3: vkCode = VK_MEDIA_STOP; break;       // Stop
-    case 4: vkCode = VK_MEDIA_NEXT_TRACK; break; // Next Track
-    case 5: vkCode = VK_MEDIA_PREV_TRACK; break; // Previous Track
-    case 6: vkCode = VK_VOLUME_UP; break;        // Volume Up
-    case 7: vkCode = VK_VOLUME_DOWN; break;      // Volume Down
-    case 8: vkCode = VK_VOLUME_MUTE; break;      // Volume Mute
+    case 1: vkCode = VK_MEDIA_STOP; break;       // Stop
+    case 2: vkCode = VK_MEDIA_NEXT_TRACK; break; // Next Track
+    case 3: vkCode = VK_MEDIA_PREV_TRACK; break; // Previous Track
+    case 4: vkCode = VK_VOLUME_UP; break;        // Volume Up
+    case 5: vkCode = VK_VOLUME_DOWN; break;      // Volume Down
+    case 6: vkCode = VK_VOLUME_MUTE; break;      // Volume Mute
     }
     if (vkCode) {
         keybd_event(vkCode, 0, KEYEVENTF_EXTENDEDKEY, 0);
         keybd_event(vkCode, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0);
     }
-#elif defined(Q_OS_LINUX)
-    // Linux implementation using xdotool or playerctl
-    QString command;
-    switch (mediaKeyIndex) {
-    case 0: command = "playerctl play-pause"; break;
-    case 1: command = "playerctl play"; break;
-    case 2: command = "playerctl pause"; break;
-    case 3: command = "playerctl stop"; break;
-    case 4: command = "playerctl next"; break;
-    case 5: command = "playerctl previous"; break;
-    case 6: command = "pactl set-sink-volume @DEFAULT_SINK@ +5%"; break;
-    case 7: command = "pactl set-sink-volume @DEFAULT_SINK@ -5%"; break;
-    case 8: command = "pactl set-sink-mute @DEFAULT_SINK@ toggle"; break;
-    }
-    if (!command.isEmpty()) {
-        QProcess::startDetached("/bin/sh", QStringList() << "-c" << command);
-    }
-#endif
 }
 
 void ActionPadServer::executeShortcut(const QString &shortcut)
 {
-#ifdef Q_OS_WIN
-    // Windows implementation stays the same
-    QProcess::startDetached("powershell", QStringList() << "-Command" <<
-                                              QString("Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('%s')")
-                                                  .arg(shortcut.replace("Ctrl+", "^").replace("Alt+", "%").replace("Shift+", "+")));
-#elif defined(Q_OS_LINUX)
-    // Try ydotool first (Wayland), fallback to xdotool (X11)
-    QString cmd = shortcut;
-    cmd = cmd.replace("Ctrl+", "ctrl+")
-              .replace("Alt+", "alt+")
-              .replace("Shift+", "shift+")
-              .replace("Meta+", "super+");
+    QStringList parts = shortcut.split('+', Qt::SkipEmptyParts);
 
-    // Check if ydotool is available (better for Wayland)
-    if (QProcess::execute("which", QStringList() << "ydotool") == 0) {
-        QProcess::startDetached("ydotool", QStringList() << "key" << cmd.toLower());
+    QList<WORD> keysToPress;
+
+    for (const QString &part : parts) {
+        QString key = part.trimmed();
+        WORD vkCode = 0;
+
+        // Handle modifiers
+        if (key == "Ctrl") {
+            vkCode = VK_CONTROL;
+        }
+        else if (key == "Alt") {
+            vkCode = VK_MENU;
+        }
+        else if (key == "Shift") {
+            vkCode = VK_SHIFT;
+        }
+        else if (key == "Meta") {
+            vkCode = VK_LWIN; // Left Windows key
+        }
+        // Handle special keys
+        else if (key == "Tab") {
+            vkCode = VK_TAB;
+        }
+        else if (key == "Delete" || key == "Del") {
+            vkCode = VK_DELETE;
+        }
+        else if (key == "Return" || key == "Enter") {
+            vkCode = VK_RETURN;
+        }
+        else if (key == "Escape") {
+            vkCode = VK_ESCAPE;
+        }
+        else if (key == "Space") {
+            vkCode = VK_SPACE;
+        }
+        else if (key == "Home") {
+            vkCode = VK_HOME;
+        }
+        else if (key == "End") {
+            vkCode = VK_END;
+        }
+        else if (key == "Page Up") {
+            vkCode = VK_PRIOR;
+        }
+        else if (key == "Page Down") {
+            vkCode = VK_NEXT;
+        }
+        else if (key == "Up") {
+            vkCode = VK_UP;
+        }
+        else if (key == "Down") {
+            vkCode = VK_DOWN;
+        }
+        else if (key == "Left") {
+            vkCode = VK_LEFT;
+        }
+        else if (key == "Right") {
+            vkCode = VK_RIGHT;
+        }
+        else if (key == "Backspace") {
+            vkCode = VK_BACK;
+        }
+        else if (key == "Insert") {
+            vkCode = VK_INSERT;
+        }
+        // Handle function keys
+        else if (key.startsWith("F") && key.length() <= 3) {
+            bool ok;
+            int fNum = key.mid(1).toInt(&ok);
+            if (ok && fNum >= 1 && fNum <= 12) {
+                vkCode = VK_F1 + (fNum - 1);
+            }
+        }
+        // Handle single characters and numbers
+        else if (key.length() == 1) {
+            QChar c = key.at(0).toUpper();
+            if (c >= 'A' && c <= 'Z') {
+                vkCode = c.unicode(); // A-Z have the same values as VK codes
+            }
+            else if (c >= '0' && c <= '9') {
+                vkCode = c.unicode(); // 0-9 have the same values as VK codes
+            }
+        }
+
+        if (vkCode != 0) {
+            keysToPress.append(vkCode);
+        }
     }
-    // Fallback to xdotool (X11 only)
-    else if (QProcess::execute("which", QStringList() << "xdotool") == 0) {
-        QProcess::startDetached("xdotool", QStringList() << "key" << cmd.toLower());
+
+    // Press all keys down in order
+    for (WORD vk : keysToPress) {
+        keybd_event(vk, 0, 0, 0);
     }
-    // Last resort: try wtype for simple key combinations
-    else if (QProcess::execute("which", QStringList() << "wtype") == 0) {
-        // wtype has different syntax, this is a simplified conversion
-        QString wtypeCmd = cmd.replace("ctrl+", "-M ctrl -k ")
-                               .replace("alt+", "-M alt -k ")
-                               .replace("shift+", "-M shift -k ");
-        QProcess::startDetached("wtype", QStringList() << wtypeCmd.split(" ", Qt::SkipEmptyParts));
+
+    // Small delay to ensure keys are registered
+    Sleep(10);
+
+    // Release all keys in reverse order
+    for (int i = keysToPress.size() - 1; i >= 0; --i) {
+        keybd_event(keysToPress[i], 0, KEYEVENTF_KEYUP, 0);
     }
-#endif
 }
 
 void ActionPadServer::onNewConnection()

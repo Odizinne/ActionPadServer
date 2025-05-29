@@ -48,12 +48,10 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
-    PRIVATE Qt6::Quick
+    PRIVATE
+    Qt6::Quick
+    user32
 )
-
-if(WIN32)
-    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE user32)
-endif()
 
 qt_add_translations(${CMAKE_PROJECT_NAME}
     TS_FILES
