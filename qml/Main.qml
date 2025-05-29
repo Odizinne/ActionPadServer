@@ -1,5 +1,7 @@
 import QtQuick
+import QtQuick.Layouts
 import QtQuick.Controls.Material
+import QtQuick.Controls.impl
 import Odizinne.ActionPadServer 1.0
 
 ApplicationWindow {
@@ -127,76 +129,46 @@ ApplicationWindow {
 
         model: server.actionModel
         cellWidth: 120
-        cellHeight: 140
+        cellHeight: 120
 
-        delegate: Item {
-            width: actionsGrid.cellWidth
-            height: actionsGrid.cellHeight
+        delegate: Button {
+            width: actionsGrid.cellWidth - 10
+            height: actionsGrid.cellHeight - 10
+            Material.roundedScale: Material.SmallScale
+            onClicked: {
+                actionDialog.isModifying = true
+                actionDialog.modifyingIndex = index
+                actionDialog.actionName = model.name
+                actionDialog.command = model.command
+                actionDialog.commandArgs = model.arguments
+                actionDialog.icon = model.icon
+                actionDialog.open()
+            }
 
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: 10
-                color: "transparent"
-                border.color: mouseArea.containsMouse ? "#4CAF50" : "#E0E0E0"
-                border.width: 2
-                radius: 8
 
-                Column {
-                    anchors.centerIn: parent
-                    spacing: 10
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 5
 
-                    Image {
-                        width: 64
-                        height: 64
-                        anchors.horizontalCenter: parent.horizontalCenter
+                    IconImage {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.preferredWidth: 48
+                        Layout.preferredHeight: 48
                         source: model.icon.length > 0 ? model.icon : "qrc:/icons/placeholder.png"
                         fillMode: Image.PreserveAspectFit
-
-                        Rectangle {
-                            anchors.fill: parent
-                            color: "#F5F5F5"
-                            border.color: "#E0E0E0"
-                            border.width: 1
-                            radius: 4
-                            visible: parent.status === Image.Error
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: "?"
-                                color: "#999"
-                                font.pixelSize: 24
-                            }
-                        }
+                        color: Material.theme === Material.Dark ? "white" : "white"
                     }
 
-                    Text {
+                    Label {
+                        Layout.fillWidth: true
                         text: model.name
-                        font.pixelSize: 12
-                        font.bold: true
-                        anchors.horizontalCenter: parent.horizontalCenter
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.WordWrap
-                        width: parent.parent.width - 20
-                        elide: Text.ElideRight
-                        maximumLineCount: 2
-                    }
-                }
-
-                MouseArea {
-                    id: mouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    onClicked: {
-                        actionDialog.isModifying = true
-                        actionDialog.modifyingIndex = index
-                        actionDialog.actionName = model.name
-                        actionDialog.command = model.command
-                        actionDialog.commandArgs = model.arguments
-                        actionDialog.icon = model.icon
-                        actionDialog.open()
+                        font.pixelSize: 12
                     }
                 }
             }
         }
     }
-}
+
