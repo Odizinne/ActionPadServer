@@ -36,6 +36,7 @@ qt_add_qml_module(${CMAKE_PROJECT_NAME}
     VERSION 1.0
     QML_FILES
         qml/Main.qml
+        qml/ActionDialog.qml
 )
 
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES

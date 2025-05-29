@@ -1,6 +1,6 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
+import QtQuick
+import QtQuick.Controls.Material
+import QtQuick.Layouts
 import Odizinne.ActionPadServer 1.0
 
 ApplicationWindow {
@@ -24,12 +24,32 @@ ApplicationWindow {
 
         onActionExecuted: function(actionId, success, output) {
             statusText.text += "\nAction " + actionId + " executed: " +
-                              (success ? "success" : "failed")
+                    (success ? "success" : "failed")
             if (output.length > 0) {
                 statusText.text += "\nOutput: " + output
             }
         }
     }
+
+    ActionDialog {
+        id: actionDialog
+        anchors.centerIn: parent
+
+        onAccepted: {
+            server.actionModel.addAction(
+                        actionName,
+                        command,
+                        commandArgs,
+                        icon
+                        )
+
+            statusText.text += "\nAction '" + actionName + "' added and pushed to " +
+                    server.clientCount + " client(s)"
+
+            clearFields()
+        }
+    }
+
 
     ColumnLayout {
         anchors.fill: parent
@@ -56,8 +76,8 @@ ApplicationWindow {
 
                 Label {
                     text: server.isRunning ?
-                          "Server running on " + server.serverAddress + ":" + server.serverPort :
-                          "Server stopped"
+                              "Server running on " + server.serverAddress + ":" + server.serverPort :
+                              "Server stopped"
                 }
 
                 Item { Layout.fillWidth: true }
@@ -78,65 +98,21 @@ ApplicationWindow {
             ColumnLayout {
                 anchors.fill: parent
 
-                // Add Action Form
-                GroupBox {
-                    title: "Add New Action"
+                // New Action Button
+                RowLayout {
                     Layout.fillWidth: true
 
-                    GridLayout {
-                        anchors.fill: parent
-                        columns: 2
+                    Button {
+                        text: "New Action"
+                        highlighted: true
+                        onClicked: actionDialog.open()
+                    }
 
-                        Label { text: "Name:" }
-                        TextField {
-                            id: nameField
-                            Layout.fillWidth: true
-                            placeholderText: "Action name"
-                        }
+                    Item { Layout.fillWidth: true }
 
-                        Label { text: "Command:" }
-                        TextField {
-                            id: commandField
-                            Layout.fillWidth: true
-                            placeholderText: "Command to execute"
-                        }
-
-                        Label { text: "Arguments:" }
-                        TextField {
-                            id: argumentsField
-                            Layout.fillWidth: true
-                            placeholderText: "Command arguments (optional)"
-                        }
-
-                        Label { text: "Icon:" }
-                        TextField {
-                            id: iconField
-                            Layout.fillWidth: true
-                            placeholderText: "Icon path (optional - uses placeholder if empty)"
-                        }
-
-                        Button {
-                            text: "Add Action"
-                            Layout.columnSpan: 2
-                            enabled: nameField.text.length > 0 && commandField.text.length > 0
-
-                            onClicked: {
-                                server.actionModel.addAction(
-                                    nameField.text,
-                                    commandField.text,
-                                    argumentsField.text,
-                                    iconField.text
-                                )
-
-                                statusText.text += "\nAction '" + nameField.text + "' added and pushed to " +
-                                                  server.clientCount + " client(s)"
-
-                                nameField.text = ""
-                                commandField.text = ""
-                                argumentsField.text = ""
-                                iconField.text = ""
-                            }
-                        }
+                    Label {
+                        text: server.actionModel.rowCount() + " action(s) configured"
+                        color: "#666"
                     }
                 }
 
@@ -152,6 +128,7 @@ ApplicationWindow {
                         height: 80
                         border.color: "#ccc"
                         border.width: 1
+                        radius: 4
 
                         RowLayout {
                             anchors.fill: parent
@@ -169,6 +146,7 @@ ApplicationWindow {
                                     color: "transparent"
                                     border.color: "#ddd"
                                     border.width: 1
+                                    radius: 2
                                     visible: parent.status === Image.Error
 
                                     Text {
@@ -181,20 +159,24 @@ ApplicationWindow {
 
                             Column {
                                 Layout.fillWidth: true
+                                spacing: 2
 
                                 Text {
                                     text: model.name
                                     font.bold: true
+                                    font.pixelSize: 14
                                 }
                                 Text {
                                     text: "Command: " + model.command +
                                           (model.arguments.length > 0 ? " " + model.arguments : "")
                                     color: "#666"
+                                    font.pixelSize: 12
                                     wrapMode: Text.WordWrap
                                 }
                                 Text {
                                     text: "Icon: " + (model.icon.length > 0 ? model.icon : "default placeholder")
-                                    color: "#666"
+                                    color: "#999"
+                                    font.pixelSize: 11
                                 }
                             }
 
@@ -209,7 +191,7 @@ ApplicationWindow {
                                     var actionName = model.name
                                     server.actionModel.removeAction(index)
                                     statusText.text += "\nAction '" + actionName + "' removed and update pushed to " +
-                                                      server.clientCount + " client(s)"
+                                            server.clientCount + " client(s)"
                                 }
                             }
                         }
