@@ -443,7 +443,6 @@ void ActionPadServer::onClientDataReceived()
 
 void ActionPadServer::broadcastActionsUpdate()
 {
-    // Send updated actions list to all connected clients
     for (auto client : m_clients) {
         if (client && client->state() == QTcpSocket::ConnectedState) {
             sendActionsToClient(client);
@@ -464,8 +463,7 @@ void ActionPadServer::sendActionsToClient(QTcpSocket *client)
         actionObj["id"] = action.id;
         actionObj["name"] = action.name;
 
-        // Use placeholder icon if none provided
-        QString iconPath = action.icon.isEmpty() ? "qrc:/icons/placeholder.png" : action.icon;
+        QString iconPath = action.icon.isEmpty() ? "placeholder" : action.icon;
         actionObj["icon"] = iconPath;
 
         actionsArray.append(actionObj);

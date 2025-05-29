@@ -406,7 +406,8 @@ Dialog {
         title: "Select Icon"
         nameFilters: ["Image files (*.png *.jpg *.jpeg *.ico *.svg)", "All files (*)"]
         onAccepted: {
-            iconField.text = selectedFile.toString().replace("file:///", "")
+            // Convert to proper file URL format
+            iconField.text = selectedFile
         }
     }
 

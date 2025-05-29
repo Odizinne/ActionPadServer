@@ -12,12 +12,12 @@ ApplicationWindow {
     height: 600
     visible: true
     title: qsTr("Action Pad Server")
-    Material.theme: Material.Dark
-    color: Material.theme === Material.Dark ? "#1C1C1C" : "#E3E3E3"
+    Material.theme: UserSettings.darkMode ? Material.Dark : Material.Light
+    color: UserSettings.darkMode ? "#1C1C1C" : "#E3E3E3"
 
     header: ToolBar {
         Material.elevation: 6
-        Material.background: Material.theme === Material.Dark ? "#2B2B2B" : "#FFFFFF"
+        Material.background: UserSettings.darkMode ? "#2B2B2B" : "#FFFFFF"
 
         ToolButton {
             icon.source: "qrc:/icons/plus.png"
@@ -153,9 +153,11 @@ ApplicationWindow {
                     Layout.alignment: Qt.AlignHCenter
                     Layout.preferredWidth: 48
                     Layout.preferredHeight: 48
-                    source: actionButton.model.icon.length > 0 ? actionButton.model.icon : "qrc:/icons/placeholder.png"
+                    source: actionButton.model.icon && actionButton.model.icon.length > 0 ?
+                            actionButton.model.icon : "qrc:/icons/placeholder.png"
                     fillMode: Image.PreserveAspectFit
-                    color: Material.theme === Material.Dark ? "white" : "white"
+                    color: (!actionButton.model.icon || actionButton.model.icon.length === 0) ?
+                           (UserSettings.darkMode ? "white" : "black") : "transparent"
                 }
 
                 Label {
