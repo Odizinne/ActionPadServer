@@ -25,7 +25,8 @@ void ActionModel::addAction(const QString &name, const QString &command,
     m_actions.append(action);
     endInsertRows();
 
-    // Notify server to broadcast update
+    // Auto-save after adding
+    saveToSettings();
     emit actionsChanged();
 }
 
@@ -38,7 +39,8 @@ void ActionModel::removeAction(int index)
     m_actions.removeAt(index);
     endRemoveRows();
 
-    // Notify server to broadcast update
+    // Auto-save after removing
+    saveToSettings();
     emit actionsChanged();
 }
 
@@ -55,7 +57,8 @@ void ActionModel::updateAction(int index, const QString &name, const QString &co
 
     emit dataChanged(this->index(index), this->index(index));
 
-    // Notify server to broadcast update
+    // Auto-save after updating
+    saveToSettings();
     emit actionsChanged();
 }
 
@@ -94,6 +97,54 @@ QHash<int, QByteArray> ActionModel::roleNames() const
     return roles;
 }
 
+void ActionModel::loadActions()
+{
+    loadFromSettings();
+}
+
+void ActionModel::saveToSettings()
+{
+    QSettings settings;
+    settings.beginWriteArray("actions");
+
+    for (int i = 0; i < m_actions.size(); ++i) {
+        settings.setArrayIndex(i);
+        settings.setValue("id", m_actions[i].id);
+        settings.setValue("name", m_actions[i].name);
+        settings.setValue("command", m_actions[i].command);
+        settings.setValue("arguments", m_actions[i].arguments);
+        settings.setValue("icon", m_actions[i].icon);
+    }
+
+    settings.endArray();
+    settings.setValue("nextId", m_nextId);
+}
+
+void ActionModel::loadFromSettings()
+{
+    QSettings settings;
+    int size = settings.beginReadArray("actions");
+
+    beginResetModel();
+    m_actions.clear();
+
+    for (int i = 0; i < size; ++i) {
+        settings.setArrayIndex(i);
+        Action action;
+        action.id = settings.value("id").toInt();
+        action.name = settings.value("name").toString();
+        action.command = settings.value("command").toString();
+        action.arguments = settings.value("arguments").toString();
+        action.icon = settings.value("icon").toString();
+        m_actions.append(action);
+    }
+
+    settings.endArray();
+    m_nextId = settings.value("nextId", 1).toInt();
+
+    endResetModel();
+}
+
 // ActionPadServer Implementation
 ActionPadServer::ActionPadServer(QObject *parent) : QObject(parent)
 {
@@ -102,6 +153,9 @@ ActionPadServer::ActionPadServer(QObject *parent) : QObject(parent)
 
     // Connect to ActionModel changes to broadcast updates
     connect(&m_actionModel, &ActionModel::actionsChanged, this, &ActionPadServer::broadcastActionsUpdate);
+
+    // Load saved actions on startup
+    m_actionModel.loadActions();
 }
 
 bool ActionPadServer::startServer(int port)

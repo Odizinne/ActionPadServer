@@ -9,6 +9,7 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QJsonArray>
+#include <QSettings>
 
 struct Action {
     QString name;
@@ -44,11 +45,15 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
     const QList<Action>& getActions() const { return m_actions; }
+    void loadActions();
 
 signals:
     void actionsChanged();
 
 private:
+    void saveToSettings();
+    void loadFromSettings();
+
     QList<Action> m_actions;
     int m_nextId = 1;
 };
