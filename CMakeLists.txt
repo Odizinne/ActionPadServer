@@ -51,6 +51,10 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     PRIVATE Qt6::Quick
 )
 
+if(WIN32)
+    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE user32)
+endif()
+
 qt_add_translations(${CMAKE_PROJECT_NAME}
     TS_FILES
         i18n/${CMAKE_PROJECT_NAME}_en.ts

@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Material
@@ -88,19 +90,25 @@ ApplicationWindow {
         onAccepted: {
             if (isModifying) {
                 ActionPadServer.actionModel.updateAction(
-                    modifyingIndex,
-                    actionName,
-                    command,
-                    commandArgs,
-                    icon
-                )
+                            modifyingIndex,
+                            actionName,
+                            command,
+                            commandArgs,
+                            icon,
+                            actionType,
+                            mediaKey,
+                            shortcutKey
+                            )
             } else {
                 ActionPadServer.actionModel.addAction(
-                    actionName,
-                    command,
-                    commandArgs,
-                    icon
-                )
+                            actionName,
+                            command,
+                            commandArgs,
+                            icon,
+                            actionType,
+                            mediaKey,
+                            shortcutKey
+                            )
             }
             clearFields()
         }
@@ -110,49 +118,54 @@ ApplicationWindow {
         id: actionsGrid
         anchors.fill: parent
         anchors.margins: 20
-
         model: ActionPadServer.actionModel
         cellWidth: 120
         cellHeight: 120
-
         delegate: Button {
+            id: actionButton
             width: actionsGrid.cellWidth - 10
             height: actionsGrid.cellHeight - 10
             Material.roundedScale: Material.SmallScale
+
+            required property var model
+            required property int index
             onClicked: {
                 actionDialog.isModifying = true
                 actionDialog.modifyingIndex = index
-                actionDialog.actionName = model.name
-                actionDialog.command = model.command
-                actionDialog.commandArgs = model.arguments
-                actionDialog.icon = model.icon
+                actionDialog.setFieldsFromAction(
+                    model.name,
+                    model.command || "",
+                    model.arguments || "",
+                    model.icon || "",
+                    model.type || 0,
+                    model.mediaKey || 0,
+                    model.shortcut || ""
+                )
                 actionDialog.open()
             }
 
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 5
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 5
+                IconImage {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: 48
+                    Layout.preferredHeight: 48
+                    source: actionButton.model.icon.length > 0 ? actionButton.model.icon : "qrc:/icons/placeholder.png"
+                    fillMode: Image.PreserveAspectFit
+                    color: Material.theme === Material.Dark ? "white" : "white"
+                }
 
-                    IconImage {
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.preferredWidth: 48
-                        Layout.preferredHeight: 48
-                        source: model.icon.length > 0 ? model.icon : "qrc:/icons/placeholder.png"
-                        fillMode: Image.PreserveAspectFit
-                        color: Material.theme === Material.Dark ? "white" : "white"
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: model.name
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                        font.pixelSize: 12
-                    }
+                Label {
+                    Layout.fillWidth: true
+                    text: actionButton.model.name
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: 12
                 }
             }
         }
     }
-
+}

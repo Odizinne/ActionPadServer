@@ -18,6 +18,9 @@ struct Action {
     QString arguments;
     QString icon;
     int id;
+    int type = 0;           // 0=command, 1=media, 2=shortcut
+    int mediaKey = 0;       // Media key index
+    QString shortcut;       // Shortcut string
 };
 
 class ActionModel : public QAbstractListModel
@@ -31,15 +34,20 @@ public:
         NameRole,
         CommandRole,
         ArgumentsRole,
-        IconRole
+        IconRole,
+        TypeRole,
+        MediaKeyRole,
+        ShortcutRole
     };
 
     explicit ActionModel(QObject *parent = nullptr);
     Q_INVOKABLE void addAction(const QString &name, const QString &command,
-                               const QString &arguments, const QString &icon);
-    Q_INVOKABLE void removeAction(int index);
+                               const QString &arguments, const QString &icon,
+                               int type = 0, int mediaKey = 0, const QString &shortcut = "");
     Q_INVOKABLE void updateAction(int index, const QString &name, const QString &command,
-                                  const QString &arguments, const QString &icon);
+                                  const QString &arguments, const QString &icon,
+                                  int type = 0, int mediaKey = 0, const QString &shortcut = "");
+    Q_INVOKABLE void removeAction(int index);
 
     // QAbstractListModel interface
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -111,6 +119,8 @@ private:
     ActionModel m_actionModel;
     QString m_serverAddress;
     int m_serverPort = 8080;
+    void executeMediaKey(int mediaKeyIndex);
+    void executeShortcut(const QString &shortcut);
 };
 
 #endif // ACTIONPADSERVER_H

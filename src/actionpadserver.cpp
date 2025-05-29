@@ -4,6 +4,9 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QJsonArray>
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
 
 // ActionModel Implementation
 ActionModel::ActionModel(QObject *parent) : QAbstractListModel(parent)
@@ -32,7 +35,8 @@ ActionPadServer* ActionPadServer::instance()
 }
 
 void ActionModel::addAction(const QString &name, const QString &command,
-                            const QString &arguments, const QString &icon)
+                            const QString &arguments, const QString &icon,
+                            int type, int mediaKey, const QString &shortcut)
 {
     beginInsertRows(QModelIndex(), rowCount(), rowCount());
 
@@ -42,11 +46,36 @@ void ActionModel::addAction(const QString &name, const QString &command,
     action.command = command;
     action.arguments = arguments;
     action.icon = icon;
+    action.type = type;
+    action.mediaKey = mediaKey;
+    action.shortcut = shortcut;
 
     m_actions.append(action);
     endInsertRows();
 
     // Auto-save after adding
+    saveToSettings();
+    emit actionsChanged();
+}
+
+void ActionModel::updateAction(int index, const QString &name, const QString &command,
+                               const QString &arguments, const QString &icon,
+                               int type, int mediaKey, const QString &shortcut)
+{
+    if (index < 0 || index >= m_actions.size())
+        return;
+
+    m_actions[index].name = name;
+    m_actions[index].command = command;
+    m_actions[index].arguments = arguments;
+    m_actions[index].icon = icon;
+    m_actions[index].type = type;
+    m_actions[index].mediaKey = mediaKey;
+    m_actions[index].shortcut = shortcut;
+
+    emit dataChanged(this->index(index), this->index(index));
+
+    // Auto-save after updating
     saveToSettings();
     emit actionsChanged();
 }
@@ -61,24 +90,6 @@ void ActionModel::removeAction(int index)
     endRemoveRows();
 
     // Auto-save after removing
-    saveToSettings();
-    emit actionsChanged();
-}
-
-void ActionModel::updateAction(int index, const QString &name, const QString &command,
-                               const QString &arguments, const QString &icon)
-{
-    if (index < 0 || index >= m_actions.size())
-        return;
-
-    m_actions[index].name = name;
-    m_actions[index].command = command;
-    m_actions[index].arguments = arguments;
-    m_actions[index].icon = icon;
-
-    emit dataChanged(this->index(index), this->index(index));
-
-    // Auto-save after updating
     saveToSettings();
     emit actionsChanged();
 }
@@ -102,6 +113,9 @@ QVariant ActionModel::data(const QModelIndex &index, int role) const
     case CommandRole: return action.command;
     case ArgumentsRole: return action.arguments;
     case IconRole: return action.icon;
+    case TypeRole: return action.type;           // Add this
+    case MediaKeyRole: return action.mediaKey;   // Add this
+    case ShortcutRole: return action.shortcut;   // Add this
     }
 
     return QVariant();
@@ -115,6 +129,9 @@ QHash<int, QByteArray> ActionModel::roleNames() const
     roles[CommandRole] = "command";
     roles[ArgumentsRole] = "arguments";
     roles[IconRole] = "icon";
+    roles[TypeRole] = "type";           // Add this
+    roles[MediaKeyRole] = "mediaKey";   // Add this
+    roles[ShortcutRole] = "shortcut";   // Add this
     return roles;
 }
 
@@ -135,6 +152,9 @@ void ActionModel::saveToSettings()
         settings.setValue("command", m_actions[i].command);
         settings.setValue("arguments", m_actions[i].arguments);
         settings.setValue("icon", m_actions[i].icon);
+        settings.setValue("type", m_actions[i].type);
+        settings.setValue("mediaKey", m_actions[i].mediaKey);
+        settings.setValue("shortcut", m_actions[i].shortcut);
     }
 
     settings.endArray();
@@ -157,6 +177,9 @@ void ActionModel::loadFromSettings()
         action.command = settings.value("command").toString();
         action.arguments = settings.value("arguments").toString();
         action.icon = settings.value("icon").toString();
+        action.type = settings.value("type", 0).toInt();
+        action.mediaKey = settings.value("mediaKey", 0).toInt();
+        action.shortcut = settings.value("shortcut").toString();
         m_actions.append(action);
     }
 
@@ -165,7 +188,6 @@ void ActionModel::loadFromSettings()
 
     endResetModel();
 }
-
 // ActionPadServer Implementation
 ActionPadServer::ActionPadServer(QObject *parent) : QObject(parent)
 {
@@ -238,16 +260,99 @@ void ActionPadServer::executeAction(int actionId)
                         process->deleteLater();
                     });
 
-            if (action.arguments.isEmpty()) {
-                process->start(action.command);
-            } else {
-                QStringList args = action.arguments.split(' ', Qt::SkipEmptyParts);
-                process->start(action.command, args);
+            if (action.type == 0) { // Command
+                if (action.arguments.isEmpty()) {
+                    process->start(action.command);
+                } else {
+                    QStringList args = action.arguments.split(' ', Qt::SkipEmptyParts);
+                    process->start(action.command, args);
+                }
+            } else if (action.type == 1) { // Media Key
+                executeMediaKey(action.mediaKey);
+                process->deleteLater(); // We don't need the process for media keys
+            } else if (action.type == 2) { // Shortcut
+                executeShortcut(action.shortcut);
+                process->deleteLater(); // We don't need the process for shortcuts
             }
 
             return;
         }
     }
+}
+
+// Add these new methods to ActionPadServer class
+void ActionPadServer::executeMediaKey(int mediaKeyIndex)
+{
+#ifdef Q_OS_WIN
+    // Windows implementation using keybd_event
+    BYTE vkCode = 0;
+    switch (mediaKeyIndex) {
+    case 0: vkCode = VK_MEDIA_PLAY_PAUSE; break; // Play/Pause
+    case 1: vkCode = VK_MEDIA_PLAY_PAUSE; break; // Play (same as play/pause)
+    case 2: vkCode = VK_MEDIA_PLAY_PAUSE; break; // Pause (same as play/pause)
+    case 3: vkCode = VK_MEDIA_STOP; break;       // Stop
+    case 4: vkCode = VK_MEDIA_NEXT_TRACK; break; // Next Track
+    case 5: vkCode = VK_MEDIA_PREV_TRACK; break; // Previous Track
+    case 6: vkCode = VK_VOLUME_UP; break;        // Volume Up
+    case 7: vkCode = VK_VOLUME_DOWN; break;      // Volume Down
+    case 8: vkCode = VK_VOLUME_MUTE; break;      // Volume Mute
+    }
+    if (vkCode) {
+        keybd_event(vkCode, 0, KEYEVENTF_EXTENDEDKEY, 0);
+        keybd_event(vkCode, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0);
+    }
+#elif defined(Q_OS_LINUX)
+    // Linux implementation using xdotool or playerctl
+    QString command;
+    switch (mediaKeyIndex) {
+    case 0: command = "playerctl play-pause"; break;
+    case 1: command = "playerctl play"; break;
+    case 2: command = "playerctl pause"; break;
+    case 3: command = "playerctl stop"; break;
+    case 4: command = "playerctl next"; break;
+    case 5: command = "playerctl previous"; break;
+    case 6: command = "pactl set-sink-volume @DEFAULT_SINK@ +5%"; break;
+    case 7: command = "pactl set-sink-volume @DEFAULT_SINK@ -5%"; break;
+    case 8: command = "pactl set-sink-mute @DEFAULT_SINK@ toggle"; break;
+    }
+    if (!command.isEmpty()) {
+        QProcess::startDetached("/bin/sh", QStringList() << "-c" << command);
+    }
+#endif
+}
+
+void ActionPadServer::executeShortcut(const QString &shortcut)
+{
+#ifdef Q_OS_WIN
+    // Windows implementation stays the same
+    QProcess::startDetached("powershell", QStringList() << "-Command" <<
+                                              QString("Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('%s')")
+                                                  .arg(shortcut.replace("Ctrl+", "^").replace("Alt+", "%").replace("Shift+", "+")));
+#elif defined(Q_OS_LINUX)
+    // Try ydotool first (Wayland), fallback to xdotool (X11)
+    QString cmd = shortcut;
+    cmd = cmd.replace("Ctrl+", "ctrl+")
+              .replace("Alt+", "alt+")
+              .replace("Shift+", "shift+")
+              .replace("Meta+", "super+");
+
+    // Check if ydotool is available (better for Wayland)
+    if (QProcess::execute("which", QStringList() << "ydotool") == 0) {
+        QProcess::startDetached("ydotool", QStringList() << "key" << cmd.toLower());
+    }
+    // Fallback to xdotool (X11 only)
+    else if (QProcess::execute("which", QStringList() << "xdotool") == 0) {
+        QProcess::startDetached("xdotool", QStringList() << "key" << cmd.toLower());
+    }
+    // Last resort: try wtype for simple key combinations
+    else if (QProcess::execute("which", QStringList() << "wtype") == 0) {
+        // wtype has different syntax, this is a simplified conversion
+        QString wtypeCmd = cmd.replace("ctrl+", "-M ctrl -k ")
+                               .replace("alt+", "-M alt -k ")
+                               .replace("shift+", "-M shift -k ");
+        QProcess::startDetached("wtype", QStringList() << wtypeCmd.split(" ", Qt::SkipEmptyParts));
+    }
+#endif
 }
 
 void ActionPadServer::onNewConnection()
