@@ -46,6 +46,7 @@ ApplicationWindow {
             icon.width: 18
             icon.height: 18
             anchors.left: parent.left
+            icon.color: UserSettings.darkMode ? "white" : "black"
             anchors.verticalCenter: parent.verticalCenter
             onClicked: {
                 actionDialog.isModifying = false
@@ -57,7 +58,7 @@ ApplicationWindow {
         Label {
             id: serverStatusLabel
             text: ActionPadServer.isRunning ? "Server Running" : "Server Stopped"
-            color: ActionPadServer.isRunning ? Material.accent : Material.foreground
+            color: ActionPadServer.isRunning ? Material.accent : (UserSettings.darkMode ? "white" : "black")
             font.pixelSize: 18
             font.bold: true
             anchors.centerIn: parent
@@ -68,6 +69,7 @@ ApplicationWindow {
             icon.width: 18
             icon.height: 18
             anchors.right: parent.right
+            icon.color: UserSettings.darkMode ? "white" : "black"
             anchors.verticalCenter: parent.verticalCenter
             onClicked: {
                 settingsWindow.show()
@@ -77,38 +79,38 @@ ApplicationWindow {
 
     ActionDialog {
         id: actionDialog
-        anchors.centerIn: parent
 
         property int modifyingIndex: -1
 
-        onDeleteRequested: {
-            ActionPadServer.actionModel.removeAction(modifyingIndex)
-            close()
+        onCreateAction: {
+            ActionPadServer.actionModel.addAction(
+                actionName,
+                command,
+                commandArgs,
+                icon,
+                actionType,
+                mediaKey,
+                shortcutKey
+            )
+            clearFields()
         }
 
-        onAccepted: {
-            if (isModifying) {
-                ActionPadServer.actionModel.updateAction(
-                            modifyingIndex,
-                            actionName,
-                            command,
-                            commandArgs,
-                            icon,
-                            actionType,
-                            mediaKey,
-                            shortcutKey
-                            )
-            } else {
-                ActionPadServer.actionModel.addAction(
-                            actionName,
-                            command,
-                            commandArgs,
-                            icon,
-                            actionType,
-                            mediaKey,
-                            shortcutKey
-                            )
-            }
+        onSaveAction: {
+            ActionPadServer.actionModel.updateAction(
+                modifyingIndex,
+                actionName,
+                command,
+                commandArgs,
+                icon,
+                actionType,
+                mediaKey,
+                shortcutKey
+            )
+            clearFields()
+        }
+
+        onDeleteAction: {
+            ActionPadServer.actionModel.removeAction(modifyingIndex)
             clearFields()
         }
     }
