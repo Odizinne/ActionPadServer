@@ -10,10 +10,32 @@ ApplicationWindow {
     id: window
     width: 800
     height: 600
-    visible: true
+    visible: UserSettings.windowVisibleStartup
     title: qsTr("Action Pad Server")
     Material.theme: UserSettings.darkMode ? Material.Dark : Material.Light
     color: UserSettings.darkMode ? "#1C1C1C" : "#E3E3E3"
+
+    onVisibleChanged: {
+        if (ActionPadServer.windowVisible !== visible) {
+            ActionPadServer.windowVisible = visible
+        }
+    }
+
+    Connections {
+        target: ActionPadServer
+
+        function onShowWindow() {
+            window.show()
+        }
+
+        function onHideWindow() {
+            window.close()
+        }
+
+        function onSettingsRequested() {
+            settingsWindow.visible = !settingsWindow.visible
+        }
+    }
 
     header: ToolBar {
         Material.elevation: 6
@@ -35,43 +57,20 @@ ApplicationWindow {
         Label {
             id: serverStatusLabel
             text: ActionPadServer.isRunning ? "Server Running" : "Server Stopped"
+            color: ActionPadServer.isRunning ? Material.accent : Material.foreground
             font.pixelSize: 18
             font.bold: true
             anchors.centerIn: parent
         }
 
-        Row {
+        ToolButton {
+            icon.source: "qrc:/icons/settings.svg"
+            icon.width: 18
+            icon.height: 18
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 10
-
-            Label {
-                text: "Port:"
-                anchors.verticalCenter: parent.verticalCenter
-            }
-
-            SpinBox {
-                id: portSpinBox
-                from: 1024
-                to: 65535
-                value: 8080
-                enabled: !ActionPadServer.isRunning
-                width: 120
-                height: implicitHeight - 6
-                anchors.verticalCenter: parent.verticalCenter
-            }
-
-            ToolButton {
-                icon.source: ActionPadServer.isRunning ? "qrc:/icons/stop.png" : "qrc:/icons/play.png"
-                icon.width: 18
-                icon.height: 18
-                onClicked: {
-                    if (ActionPadServer.isRunning) {
-                        ActionPadServer.stopServer()
-                    } else {
-                        ActionPadServer.startServer(portSpinBox.value)
-                    }
-                }
+            onClicked: {
+                settingsWindow.show()
             }
         }
     }
@@ -112,6 +111,10 @@ ApplicationWindow {
             }
             clearFields()
         }
+    }
+
+    SettingsWindow {
+        id: settingsWindow
     }
 
     GridView {

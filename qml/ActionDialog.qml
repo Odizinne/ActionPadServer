@@ -17,6 +17,7 @@ Dialog {
     property alias mediaKey: mediaKeyComboBox.currentIndex
     property alias shortcutKey: shortcutField.text
     property bool isModifying: false
+    property int labelWidth: 100
 
     // Custom button text
     Component.onCompleted: {
@@ -75,7 +76,10 @@ Dialog {
             columnSpacing: 10
             rowSpacing: 10
 
-            Label { text: "Name:" }
+            Label {
+                text: "Name:"
+                Layout.preferredWidth: dialog.labelWidth
+            }
             TextField {
                 Layout.preferredHeight: 35
                 id: nameField
@@ -84,7 +88,10 @@ Dialog {
                 placeholderText: "Action name"
             }
 
-            Label { text: "Type:" }
+            Label {
+                text: "Type:"
+                Layout.preferredWidth: dialog.labelWidth
+            }
             ComboBox {
                 Layout.preferredHeight: 35
                 id: typeComboBox
@@ -94,7 +101,10 @@ Dialog {
                 currentIndex: 0
             }
 
-            Label { text: "Icon:" }
+            Label {
+                text: "Icon:"
+                Layout.preferredWidth: dialog.labelWidth
+            }
             TextField {
                 Layout.preferredHeight: 35
                 id: iconField
@@ -119,7 +129,10 @@ Dialog {
             rowSpacing: 10
             visible: typeComboBox.currentIndex === 0
 
-            Label { text: "Command:" }
+            Label {
+                text: "Command:"
+                Layout.preferredWidth: dialog.labelWidth
+            }
             TextField {
                 Layout.preferredHeight: 35
                 id: commandField
@@ -133,7 +146,10 @@ Dialog {
                 onClicked: commandFileDialog.open()
             }
 
-            Label { text: "Arguments:" }
+            Label {
+                text: "Arguments:"
+                Layout.preferredWidth: dialog.labelWidth
+            }
             TextField {
                 Layout.preferredHeight: 35
                 id: argumentsField
@@ -152,7 +168,10 @@ Dialog {
             rowSpacing: 10
             visible: typeComboBox.currentIndex === 1
 
-            Label { text: "Media Key:" }
+            Label {
+                text: "Media Key:"
+                Layout.preferredWidth: dialog.labelWidth
+            }
             ComboBox {
                 Layout.preferredHeight: 35
                 id: mediaKeyComboBox
@@ -178,7 +197,10 @@ Dialog {
             rowSpacing: 10
             visible: typeComboBox.currentIndex === 2
 
-            Label { text: "Shortcut:" }
+            Label {
+                text: "Shortcut:"
+                Layout.preferredWidth: dialog.labelWidth
+            }
 
             RowLayout {
                 Layout.fillWidth: true
@@ -309,7 +331,10 @@ Dialog {
                 }
             }
 
-            Label { text: "Preview:" }
+            Label {
+                text: "Preview:"
+                Layout.preferredWidth: dialog.labelWidth
+            }
             Label {
                 id: shortcutPreview
                 Layout.fillWidth: true

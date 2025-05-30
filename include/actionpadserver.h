@@ -11,6 +11,9 @@
 #include <QJsonArray>
 #include <QSettings>
 #include <QQmlEngine>
+#include <QSystemTrayIcon>
+#include <QAction>
+#include <QMenu>
 
 struct Action {
     QString name;
@@ -78,6 +81,8 @@ class ActionPadServer : public QObject
     Q_PROPERTY(int serverPort READ serverPort NOTIFY serverPortChanged)
     Q_PROPERTY(int clientCount READ clientCount NOTIFY clientCountChanged)
     Q_PROPERTY(ActionModel* actionModel READ actionModel CONSTANT)
+    Q_PROPERTY(bool windowVisible READ windowVisible WRITE setWindowVisible NOTIFY windowVisibleChanged)
+    Q_PROPERTY(bool isRunAtStartup READ isRunAtStartup NOTIFY isRunAtStartupChanged FINAL)
 
 public:
     static ActionPadServer* create(QQmlEngine *qmlEngine, QJSEngine *jsEngine);
@@ -88,30 +93,45 @@ public:
     int serverPort() const { return m_serverPort; }
     int clientCount() const { return m_clients.size(); }
     ActionModel* actionModel() { return &m_actionModel; }
+    bool windowVisible() const { return m_windowVisible; }
+    void setWindowVisible(bool visible);
+    bool isRunAtStartup() const { return m_isRunAtStartup; }
 
     Q_INVOKABLE bool startServer(int port = 8080);
     Q_INVOKABLE void stopServer();
     Q_INVOKABLE void executeAction(int actionId);
+    Q_INVOKABLE void showSettings();
+    Q_INVOKABLE void setRunAtStartup(bool enable);
 
 signals:
     void isRunningChanged();
     void serverAddressChanged();
     void serverPortChanged();
     void clientCountChanged();
+    void windowVisibleChanged();
     void clientConnected(const QString &address);
     void clientDisconnected(const QString &address);
     void actionExecuted(int actionId, bool success, const QString &output);
+    void showWindow();
+    void hideWindow();
+    void settingsRequested();
+    void isRunAtStartupChanged();
 
 private slots:
     void onNewConnection();
     void onClientDisconnected();
     void onClientDataReceived();
     void broadcastActionsUpdate();
+    void toggleWindowVisibility();
+    void exitApplication();
+    void onTrayIconActivated(QSystemTrayIcon::ActivationReason reason);
 
 private:
     explicit ActionPadServer(QObject *parent = nullptr);
     void sendActionsToClient(QTcpSocket *client);
     void processClientMessage(QTcpSocket *client, const QJsonObject &message);
+    void createTrayMenu();
+    void setupSystemTray();
 
     static ActionPadServer* m_instance;
     QTcpServer *m_server;
@@ -119,6 +139,14 @@ private:
     ActionModel m_actionModel;
     QString m_serverAddress;
     int m_serverPort = 8080;
+    bool m_windowVisible = true;
+    QSystemTrayIcon *m_trayIcon;
+    QMenu *m_trayMenu;
+    QAction *m_showHideAction;
+    QAction *m_settingsAction;
+    QAction *m_exitAction;
+    bool m_isRunAtStartup{false};
+
     void executeMediaKey(int mediaKeyIndex);
     void executeShortcut(const QString &shortcut);
 };

@@ -1,9 +1,13 @@
 <RCC>
     <qresource prefix="/icons">
+        <file>icon.png</file>
         <file>placeholder.png</file>
         <file>play.png</file>
         <file>stop.png</file>
         <file>plus.png</file>
         <file>browse.png</file>
+        <file>sun.svg</file>
+        <file>moon.svg</file>
+        <file>settings.svg</file>
     </qresource>
 </RCC>

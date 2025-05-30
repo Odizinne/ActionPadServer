@@ -11,6 +11,7 @@ set(CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders TRUE)
 
 find_package(Qt6 REQUIRED COMPONENTS
     Quick
+    Widgets
     LinguistTools
 )
 
@@ -18,11 +19,13 @@ qt_standard_project_setup(REQUIRES 6.8)
 
 set(SOURCES
     src/actionpadserver.cpp
+    src/shortcutmanager.cpp
     src/main.cpp
 )
 
 set(HEADERS
     include/actionpadserver.h
+    include/shortcutmanager.h
 )
 
 qt_add_executable(${CMAKE_PROJECT_NAME}
@@ -34,6 +37,8 @@ qt_add_executable(${CMAKE_PROJECT_NAME}
 set(QML_FILES
     qml/Main.qml
     qml/ActionDialog.qml
+    qml/ScrollingArea.qml
+    qml/SettingsWindow.qml
 )
 
 set(QML_SINGLETONS
@@ -61,6 +66,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_link_libraries(${CMAKE_PROJECT_NAME}
     PRIVATE
     Qt6::Quick
+    Qt6::Widgets
     user32
 )
 

@@ -7,6 +7,8 @@
 #include <windows.h>
 #include <QFile>
 #include <QFileInfo>
+#include <QCoreApplication>
+#include "shortcutmanager.h"
 
 ActionModel::ActionModel(QObject *parent) : QAbstractListModel(parent)
 {
@@ -186,9 +188,23 @@ void ActionModel::loadFromSettings()
 
     endResetModel();
 }
-// ActionPadServer Implementation
-ActionPadServer::ActionPadServer(QObject *parent) : QObject(parent)
+
+ActionPadServer::ActionPadServer(QObject *parent)
+    : QObject(parent)
+    , m_server(new QTcpServer(this))
+    , m_windowVisible(true)
+    , m_trayIcon(nullptr)
+    , m_trayMenu(nullptr)
+    , m_showHideAction(nullptr)
+    , m_settingsAction(nullptr)
+    , m_exitAction(nullptr)
+    , m_isRunAtStartup(ShortcutManager::isShortcutPresent())
 {
+    QSettings settings("Odizinne", "ActionPadServer");
+    m_windowVisible = settings.value("windowVisibleStartup", true).toBool();
+
+    setupSystemTray();
+
     m_server = new QTcpServer(this);
     connect(m_server, &QTcpServer::newConnection, this, &ActionPadServer::onNewConnection);
 
@@ -197,6 +213,11 @@ ActionPadServer::ActionPadServer(QObject *parent) : QObject(parent)
 
     // Load saved actions on startup
     m_actionModel.loadActions();
+
+
+    if (settings.value("autostartServer", false).toBool()) {
+        startServer(settings.value("port", 8080).toInt());
+    }
 }
 
 bool ActionPadServer::startServer(int port)
@@ -522,5 +543,92 @@ void ActionPadServer::processClientMessage(QTcpSocket *client, const QJsonObject
     }
     else if (type == "get_actions") {
         sendActionsToClient(client);
+    }
+}
+
+void ActionPadServer::setWindowVisible(bool visible)
+{
+    if (m_windowVisible != visible) {
+        m_windowVisible = visible;
+        emit windowVisibleChanged();
+
+        if (m_showHideAction) {
+            m_showHideAction->setText(visible ? "Hide" : "Show");
+        }
+
+        if (visible) {
+            emit showWindow();
+        } else {
+            emit hideWindow();
+        }
+    }
+}
+
+void ActionPadServer::setupSystemTray()
+{
+    m_trayIcon = new QSystemTrayIcon(this);
+    m_trayIcon->setIcon(QIcon(":/icons/icon.png"));
+
+    createTrayMenu();
+
+    connect(m_trayIcon, &QSystemTrayIcon::activated,
+            this, &ActionPadServer::onTrayIconActivated);
+
+    m_trayIcon->show();
+}
+
+void ActionPadServer::createTrayMenu()
+{
+    m_trayMenu = new QMenu();
+
+    m_showHideAction = new QAction(m_windowVisible ? "Hide" : "Show", this);
+    connect(m_showHideAction, &QAction::triggered, this, &ActionPadServer::toggleWindowVisibility);
+
+    m_settingsAction = new QAction("Settings", this);
+    connect(m_settingsAction, &QAction::triggered, this, &ActionPadServer::showSettings);
+
+    m_exitAction = new QAction("Exit", this);
+    connect(m_exitAction, &QAction::triggered, this, &ActionPadServer::exitApplication);
+
+    m_trayMenu->addAction(m_showHideAction);
+    m_trayMenu->addAction(m_settingsAction);
+    m_trayMenu->addSeparator();
+    m_trayMenu->addAction(m_exitAction);
+
+    m_trayIcon->setContextMenu(m_trayMenu);
+}
+
+void ActionPadServer::onTrayIconActivated(QSystemTrayIcon::ActivationReason reason)
+{
+    if (reason == QSystemTrayIcon::ActivationReason::Trigger) {
+        toggleWindowVisibility();
+    }
+}
+
+void ActionPadServer::toggleWindowVisibility()
+{
+    setWindowVisible(!m_windowVisible);
+}
+
+void ActionPadServer::showSettings()
+{
+    if (!m_windowVisible) {
+        setWindowVisible(true);
+    }
+    emit settingsRequested();
+}
+
+void ActionPadServer::exitApplication()
+{
+    QCoreApplication::quit();
+}
+
+void ActionPadServer::setRunAtStartup(bool enable)
+{
+    ShortcutManager::manageShortcut(enable);
+
+    if (m_isRunAtStartup != enable) {
+        m_isRunAtStartup = enable;
+        emit isRunAtStartupChanged();
     }
 }
